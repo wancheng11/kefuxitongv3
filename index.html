@@ -1,0 +1,865 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>在线客服</title>
+    <link rel="stylesheet" href="style.css">
+    <style>
+        /* 添加基础样式确保全屏显示 */
+        html, body {
+            margin: 0;
+            padding: 0;
+            width: 100%;
+            height: 100%;
+            overflow: hidden;
+        }
+        
+        .chat-container {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            width: 100%;
+            height: 100vh;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+        }
+
+        .chat-header {
+            flex: 0 0 auto;
+            padding: 8px 10px;
+            background: linear-gradient(90deg, 
+                rgba(0, 122, 255, 0.8),   /* 蓝色 */
+                rgba(255, 71, 87, 0.8),   /* 红色 */
+                rgba(76, 217, 100, 0.8),  /* 绿色 */
+                rgba(88, 86, 214, 0.8)    /* 紫色 */
+            ) !important;
+            z-index: 10;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.2);
+        }
+
+        .chat-messages {
+            flex: 1;
+            overflow-y: hidden;
+            padding: 10px;
+            background-color: #f5f5f5;
+            -webkit-overflow-scrolling: touch;
+            position: relative;
+            height: calc(100vh - 120px);
+        }
+
+        .chat-input {
+            flex: 0 0 auto;
+            padding: 10px;
+            background: #fff;
+            position: relative;
+            z-index: 10;
+        }
+
+        /* 确保弹窗在全屏模式下正确显示 */
+        .order-modal {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.5);
+            display: none;
+            z-index: 1000;
+        }
+
+        .modal-content {
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            background: #fff;
+            border-radius: 20px 20px 0 0;
+            max-height: 80vh;
+            overflow-y: auto;
+        }
+
+        /* 修改排队状态样式 */
+        .queue-status {
+            text-align: center;
+            margin: 20px auto;
+            padding: 15px;
+            width: fit-content;
+            max-width: 80%;
+        }
+
+        .queue-info {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .queue-icon {
+            font-size: 24px;
+            color: #666;
+        }
+
+        .queue-text {
+            text-align: center;
+        }
+
+        .queue-text p {
+            margin: 5px 0;
+            color: #666;
+            font-size: 14px;
+        }
+
+        /* 移除进度条相关样式 */
+        .queue-progress {
+            display: none;
+        }
+
+        /* 修改消息样式 */
+        .message {
+            display: flex;
+            margin: 8px;
+            align-items: flex-start;
+        }
+
+        .message .avatar {
+            width: 35px;
+            height: 35px;
+            margin-right: 8px;
+            flex-shrink: 0;
+        }
+
+        .message-content {
+            padding: 8px 12px;
+            border-radius: 8px;
+            max-width: 70%;
+            word-wrap: break-word;
+            font-size: 14px;
+        }
+
+        /* 用户消息样式 */
+        .message.user .message-content {
+            background-color: #f0f0f0;
+            color: #333;
+        }
+
+        /* 客服消息样式 */
+        .message.service .message-content {
+            background-color: #007AFF;
+            color: white;
+        }
+
+        .message-time {
+            font-size: 11px;
+            margin-top: 3px;
+            text-align: right;
+        }
+
+        .message.user .message-time {
+            color: #999;
+        }
+
+        .message.service .message-time {
+            color: rgba(255, 255, 255, 0.8);
+        }
+
+        /* 移除之前的flex-direction和其他可能影响布局的样式 */
+        .message.user {
+            flex-direction: row;
+        }
+
+        .chat-messages {
+            padding: 8px;
+            overflow-y: auto;
+            flex: 1;
+            background-color: #f5f5f5;
+        }
+
+        /* 确保聊天区域可以滚动 */
+        .chat-container {
+            display: flex;
+            flex-direction: column;
+            height: 100vh;
+        }
+
+        .chat-messages {
+            flex: 1;
+            overflow-y: auto;
+            -webkit-overflow-scrolling: touch;
+            padding: 10px;
+            background-color: #f5f5f5;
+        }
+
+        /* 修改手机号码输入框样式 */
+        .phone-input-container {
+            display: flex;
+            gap: 10px;
+            margin-top: 10px;
+            background-color: white;
+            padding: 15px;
+            border-radius: 8px;
+            border: 1px solid #e0e0e0;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+        }
+
+        .phone-input {
+            flex: 1;
+            padding: 10px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            font-size: 14px;
+            outline: none;
+        }
+
+        .phone-input:focus {
+            border-color: #007AFF;
+        }
+
+        .phone-submit-btn {
+            padding: 10px 20px;
+            background-color: #007AFF;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 14px;
+            font-weight: 500;
+        }
+
+        .phone-submit-btn:hover {
+            background-color: #0056b3;
+        }
+
+        .phone-submit-btn:disabled {
+            background-color: #ccc;
+            cursor: not-allowed;
+        }
+
+        .phone-input:disabled {
+            background-color: #f5f5f5;
+            cursor: not-allowed;
+            border-color: #ddd;
+        }
+
+        /* 确保手机号码输入框在消息气泡中正确显示 */
+        .message.service .message-content .phone-input-container {
+            margin: 10px 0;
+            background-color: white;
+        }
+
+        /* 添加图片消息样式 */
+        .chat-image {
+            max-width: 200px;
+            max-height: 200px;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: transform 0.2s;
+        }
+
+        .chat-image:hover {
+            transform: scale(1.05);
+        }
+
+        /* 确保图片在消息气泡中正确显示 */
+        .message-content img {
+            max-width: 180px;
+            max-height: 180px;
+            border-radius: 6px;
+            display: block;
+            margin: 4px 0;
+        }
+
+        /* 调整图片消息的背景色 */
+        .message.user .message-content img + .message-time {
+            margin-top: 8px;
+        }
+
+        /* 系统提示消息样式 */
+        .system-message {
+            text-align: center;
+            margin: 20px auto;
+            padding: 15px 30px;
+            background-color: #f5f5f5;
+            border: 2px solid;
+            border-image: linear-gradient(45deg, #ff6b6b, #4dabf7, #ffd43b) 1;
+            border-radius: 50px;
+            color: #2f5233;
+            font-size: 14px;
+            line-height: 1.5;
+            width: fit-content;
+            max-width: 80%;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+        }
+
+        /* 修改+号按钮样式 */
+        .icon-button.more-button {
+            background-color: #007AFF;  /* 蓝色背景 */
+            color: white;  /* 白色文字 */
+            border: none;
+            width: 30px;
+            height: 30px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 20px;
+            cursor: pointer;
+            transition: background-color 0.3s ease;
+        }
+
+        .icon-button.more-button:hover {
+            background-color: #0056b3;  /* 鼠标悬停时的深蓝色 */
+        }
+
+        /* 确保按钮在输入框左侧正确显示 */
+        .input-buttons.left {
+            display: flex;
+            align-items: center;
+        }
+
+        /* 恢复头部样式 */
+        .chat-header {
+            flex: 0 0 auto;
+            padding: 10px;
+            background: #fff;
+            z-index: 10;
+        }
+
+        /* 恢复服务信息布局 */
+        .service-info {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        /* 头像样式 */
+        .service-info .avatar {
+            width: 40px;
+            height: 40px;
+            flex-shrink: 0;
+        }
+
+        .service-info .avatar img {
+            width: 100%;
+            height: 100%;
+            border-radius: 50%;
+            object-fit: cover;
+        }
+
+        /* 信息区域样式 */
+        .service-info .info {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+        }
+
+        /* 修改文字颜色为白色 */
+        .service-info .service-name {
+            font-size: 16px;
+            font-weight: 500;
+            color: white !important;
+            text-shadow: 0 1px 2px rgba(0, 0, 0, 0.15);
+        }
+
+        .service-info .service-id {
+            font-size: 13px;
+            color: rgba(255, 255, 255, 0.9) !important;
+            text-shadow: 0 1px 2px rgba(0, 0, 0, 0.15);
+        }
+
+        /* 修头部布局样式 */
+        .header-content {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            width: 100%;
+            padding: 0 10px;
+        }
+
+        /* 修改认证按钮样式 */
+        .auth-buttons {
+            display: flex;
+            gap: 10px;
+            margin-left: auto; /* 确保靠右对齐 */
+        }
+
+        .auth-btn {
+            padding: 6px 12px;
+            border: none;
+            border-radius: 4px;
+            background: rgba(255, 255, 255, 0.2);
+            color: white;
+            font-size: 13px;
+            cursor: pointer;
+            transition: background-color 0.3s;
+        }
+
+        /* 移除原有的反馈按钮样式 */
+        .ticket-btn {
+            display: none;
+        }
+
+        /* 更新更多菜单样式 */
+        .more-menu .menu-item {
+            padding: 12px 15px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            cursor: pointer;
+            transition: background-color 0.3s;
+        }
+
+        .more-menu .menu-item:hover {
+            background-color: #f5f5f5;
+        }
+
+        .menu-icon {
+            font-size: 18px;
+        }
+
+        /* 认证按钮样式 */
+        .auth-buttons {
+            display: flex;
+            gap: 10px;
+        }
+
+        .auth-btn {
+            padding: 6px 12px;
+            border: none;
+            border-radius: 4px;
+            background: rgba(255, 255, 255, 0.2);
+            color: white;
+            font-size: 13px;
+            cursor: pointer;
+            transition: background-color 0.3s;
+        }
+
+        .auth-btn:hover {
+            background: rgba(255, 255, 255, 0.3);
+        }
+
+        /* 认证弹窗样式 */
+        .auth-modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.5);
+            z-index: 2000;
+        }
+
+        .auth-modal-content {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            width: 90%;
+            max-width: 400px;
+        }
+
+        .auth-modal-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+        }
+
+        .close-modal {
+            background: none;
+            border: none;
+            font-size: 24px;
+            cursor: pointer;
+            color: #666;
+        }
+
+        .form-group {
+            margin-bottom: 15px;
+        }
+
+        .form-group label {
+            display: block;
+            margin-bottom: 5px;
+            color: #333;
+        }
+
+        .form-group input {
+            width: 100%;
+            padding: 8px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            box-sizing: border-box;
+        }
+
+        .auth-submit-btn {
+            width: 100%;
+            padding: 10px;
+            background: #007AFF;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 14px;
+        }
+
+        .auth-submit-btn:hover {
+            background: #0056b3;
+        }
+
+        /* 添加反馈弹窗 */
+        .ticket-modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.5);
+            z-index: 2000;
+        }
+
+        .ticket-modal.show {
+            display: block;
+        }
+
+        .ticket-modal-content {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            width: 90%;
+            max-width: 400px;
+        }
+
+        .ticket-modal-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+        }
+
+        .close-ticket-modal {
+            background: none;
+            border: none;
+            font-size: 24px;
+            cursor: pointer;
+            color: #666;
+        }
+
+        .feedback-form .form-group {
+            margin-bottom: 15px;
+        }
+
+        .feedback-form label {
+            display: block;
+            margin-bottom: 5px;
+            color: #333;
+        }
+
+        .feedback-form input,
+        .feedback-form textarea {
+            width: 100%;
+            padding: 8px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            box-sizing: border-box;
+        }
+
+        .feedback-form .submit-btn {
+            width: 100%;
+            padding: 10px;
+            background: #007AFF;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 14px;
+        }
+
+        .feedback-form .submit-btn:hover {
+            background: #0056b3;
+        }
+
+        /* 修改顶部个人信息样式 */
+        .auth-buttons {
+            display: flex;
+            gap: 10px;
+            margin-left: auto;
+            align-items: flex-end;  /* 调整到底部对齐 */
+            padding-bottom: 5px;    /* 添加底部间距 */
+        }
+
+        /* 用户信息容器样式 */
+        .user-info-container {
+            display: flex;
+            flex-direction: column;
+            align-items: flex-end;  /* 右对齐 */
+            margin-right: 10px;
+        }
+
+        /* 用户名和ID样式 */
+        .user-name {
+            color: white;
+            font-size: 14px;
+            margin-bottom: 2px;
+        }
+
+        .user-id {
+            color: rgba(255, 255, 255, 0.8);
+            font-size: 12px;
+        }
+
+        /* 退出按钮样式 */
+        .logout-btn {
+            padding: 4px 12px;
+            background: rgba(255, 255, 255, 0.2);
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 13px;
+            margin-top: 2px;
+        }
+    </style>
+</head>
+<body>
+    <!-- 保持原有的DOM结构不变 -->
+    <div class="chat-container">
+        <!-- 聊天头部 -->
+        <div class="chat-header">
+            <div class="header-content">
+                <!-- 原有的service-info移到左侧 -->
+                <div class="service-info">
+                    <div class="avatar">
+                        <img src="https://s1.imagehub.cc/images/2024/11/06/d7a00d349a2039159224eeac90e7f067.png" alt="客服头像" id="serviceAvatar">
+                    </div>
+                    <div class="info">
+                        <div class="service-name">万程乐娱</div>
+                        <div class="service-id">智能助理-万小程</div>
+                    </div>
+                </div>
+                <!-- 登录注册按钮移到右侧 -->
+                <div class="auth-buttons">
+                    <button class="auth-btn login-btn" onclick="showLoginModal()">登录</button>
+                    <button class="auth-btn register-btn" onclick="showRegisterModal()">注册</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- 新增：排队状态区域 -->
+        <div class="queue-status" id="queueStatus" style="display: none;">
+            <div class="queue-info">
+                <div class="queue-icon">🕒</div>
+                <div class="queue-text">
+                    <p>正在排队中，请稍候...</p>
+                    <p>当前排队人数：<span id="queueNumber">0</span>人</p>
+                    <p>预计等待时间：<span id="estimatedTime">0</span>分钟</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- 聊天消息区域 -->
+        <div class="chat-messages" id="chatMessages">
+            <!-- 消息会通过 JavaScript 动态添加 -->
+        </div>
+
+        <!-- 输入区域 -->
+        <div class="chat-input">
+            <div class="input-buttons left">
+                <button class="icon-button more-button">+</button>
+            </div>
+            <textarea id="messageInput" placeholder="请输入消息..."></textarea>
+            <div class="input-buttons right">
+                <button class="send-button" id="sendButton">发送</button>
+            </div>
+            <!-- 更多功能菜单 -->
+            <div class="more-menu" id="moreMenu">
+                <div class="menu-item" id="selectOrder">
+                    <span class="menu-icon">📋</span>
+                    <span>选择订单</span>
+                </div>
+                <div class="menu-item" id="sendImage">
+                    <span class="menu-icon">🖼️</span>
+                    <span>发送图片</span>
+                </div>
+                <div class="menu-item" id="feedback">
+                    <span class="menu-icon">📝</span>
+                    <span>问题反馈</span>
+                </div>
+                <input type="file" id="imageInput" accept="image/*" style="display: none;" multiple>
+                <div class="menu-item" id="endService">
+                    <span class="menu-icon">🔚</span>
+                    <span>结束服务</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- 订单选择弹窗 -->
+        <div class="order-modal" id="orderModal">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h3>请选择您的订单</h3>
+                    <button class="close-modal">×</button>
+                </div>
+                <div class="modal-body">
+                    <div class="order-list" id="orderList">
+                        <!-- 订单列表将通过 JavaScript 动态添加 -->
+                    </div>
+                    <div class="more-orders" id="moreOrders">
+                        <button class="more-orders-btn">查看更多订单</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 添加登录弹窗 -->
+        <div class="auth-modal" id="loginModal">
+            <div class="auth-modal-content">
+                <div class="auth-modal-header">
+                    <h3>登录</h3>
+                    <button class="close-modal" onclick="closeLoginModal()">×</button>
+                </div>
+                <div class="auth-modal-body">
+                    <form id="loginForm">
+                        <div class="form-group">
+                            <label>手机号码</label>
+                            <input type="tel" id="loginPhone" maxlength="11" placeholder="请输入手机号码">
+                        </div>
+                        <div class="form-group">
+                            <label>密码</label>
+                            <input type="password" id="loginPassword" placeholder="请输入密码">
+                        </div>
+                        <button type="submit" class="auth-submit-btn">登录</button>
+                    </form>
+                </div>
+            </div>
+        </div>
+
+        <!-- 添加注册弹窗 -->
+        <div class="auth-modal" id="registerModal">
+            <div class="auth-modal-content">
+                <div class="auth-modal-header">
+                    <h3>注册</h3>
+                    <button class="close-modal" onclick="closeRegisterModal()">×</button>
+                </div>
+                <div class="auth-modal-body">
+                    <form id="registerForm">
+                        <div class="form-group">
+                            <label>手机号码</label>
+                            <input type="tel" id="registerPhone" maxlength="11" placeholder="请输入手机号码">
+                        </div>
+                        <div class="form-group">
+                            <label>昵称</label>
+                            <input type="text" id="registerNickname" placeholder="请输入昵称">
+                        </div>
+                        <div class="form-group">
+                            <label>密码</label>
+                            <input type="password" id="registerPassword" placeholder="请输入密码">
+                        </div>
+                        <div class="form-group">
+                            <label>确认密码</label>
+                            <input type="password" id="confirmPassword" placeholder="请再次输入密码">
+                        </div>
+                        <button type="submit" class="auth-submit-btn">注册</button>
+                    </form>
+                </div>
+            </div>
+        </div>
+
+        <!-- 修改反馈弹窗结构 -->
+        <div class="ticket-modal" id="ticketModal" style="display: none;">
+            <div class="ticket-modal-content">
+                <div class="ticket-modal-header">
+                    <h3>反馈</h3>
+                    <button class="close-ticket-modal" onclick="closeTicketModal()">×</button>
+                </div>
+                <div class="ticket-modal-body">
+                    <form class="feedback-form">
+                        <div class="form-group">
+                            <label>日期</label>
+                            <input type="text" id="feedbackDate" readonly>
+                        </div>
+                        <div class="form-group">
+                            <label>姓名</label>
+                            <input type="text" id="feedbackName" placeholder="请输入姓名">
+                        </div>
+                        <div class="form-group">
+                            <label>手机号码</label>
+                            <input type="tel" id="feedbackPhone" placeholder="请输入手机号码" maxlength="11">
+                        </div>
+                        <div class="form-group">
+                            <label>反馈内容</label>
+                            <textarea id="feedbackContent" placeholder="请输入反馈内容" rows="4"></textarea>
+                        </div>
+                        <button type="submit" class="submit-btn">提交</button>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 修改强制登录遮罩层 -->
+    <div id="loginOverlay" style="
+        position: fixed;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        background: rgba(0, 0, 0, 0.8);
+        z-index: 9999;
+        display: flex;
+        flex-direction: column;
+        justify-content: center;
+        align-items: center;
+        color: white;
+    ">
+        <div style="
+            background: white;
+            padding: 40px;
+            border-radius: 12px;
+            text-align: center;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+        ">
+            <h2 style="margin-bottom: 20px; color: #333;">欢迎使用在线客服</h2>
+            <p style="margin-bottom: 30px; color: #666;">请先登录或注册后使用</p>
+            <div style="display: flex; gap: 20px;">
+                <button onclick="showLoginModal()" style="
+                    padding: 10px 30px;
+                    background: #007AFF;
+                    color: white;
+                    border: none;
+                    border-radius: 4px;
+                    cursor: pointer;
+                    font-size: 16px;
+                    transition: background-color 0.3s;
+                ">登录</button>
+                <button onclick="showRegisterModal()" style="
+                    padding: 10px 30px;
+                    background: #f5f5f5;
+                    color: #333;
+                    border: none;
+                    border-radius: 4px;
+                    cursor: pointer;
+                    font-size: 16px;
+                    transition: background-color 0.3s;
+                ">注册</button>
+            </div>
+        </div>
+    </div>
+
+    <script src="script.js"></script>
+</body>
+</html> 
